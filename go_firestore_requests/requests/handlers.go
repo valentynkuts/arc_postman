@@ -8,9 +8,45 @@ import (
 	"io/ioutil"
 	"net/http"
 )
+func GetUserReqs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
+		return
+	}
+	userId := ps.ByName("userId") //id of request
+	fmt.Println("userId - ", userId)
 
+	//get host,url,method, headers, params, body from firestore by id
+	reqs, err := GetUserRequests(userId)
+	if err != nil {
+		http.Error(w, http.StatusText(500)+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println(reqs)
+
+	jsonReqs, _ := json.Marshal(reqs)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonReqs)
+}
+
+func PostReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	if r.Method != "POST" {
+		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
+		return
+	}
+
+	//add requests to firestore
+	req, err := AddRequest(r)
+	if err != nil {
+		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
+		return
+	}
+	fmt.Println(req)
+
+}
 //add requests to firestore with id :reqId
-func PostReq(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func PostReqWithId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	reqID := ps.ByName("reqId")
 	fmt.Println("param - ", reqID)
 
@@ -21,7 +57,7 @@ func PostReq(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 
 	//add requests to firestore with id
-	req, err := AddRequest(r, reqID)
+	req, err := AddRequestWithId(r, reqID)
 	if err != nil {
 		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
 		return
@@ -33,7 +69,7 @@ func PostReq(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 //get request from firestore by id
 //make Client to do request from firestore
 //
-func GetReq(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func GetReqWithId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
 		return
@@ -42,13 +78,14 @@ func GetReq(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	fmt.Println("param - ", reqId)
 
 	//get host,url,method, headers, params, body from firestore by id
-	req, err := GetRequest(reqId)
+	req, err := GetRequestWithId(reqId)
 	if err != nil {
 		http.Error(w, http.StatusText(500)+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Println(req)
+	fmt.Println(req.UserId)
 	fmt.Println(req.Method)
 	fmt.Println(req.Host)
 	fmt.Println(req.Url)
@@ -149,6 +186,8 @@ func client(
 		req.URL.RawQuery = q.Encode()
 	}
 
+	fmt.Println(req.URL.String())
+
 	//--------------------
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -165,13 +204,13 @@ func client(
 	return body
 }
 // get all id of requests
-func GetAllReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func GetAllIdReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
 		return
 	}
 
-	IDs, err := AllRequest()
+	IDs, err := AllIdRequest()
 	if err != nil {
 		http.Error(w, http.StatusText(500)+err.Error(), http.StatusInternalServerError)
 		return

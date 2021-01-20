@@ -16,14 +16,17 @@ func main() {
 	//router.GET("/requests/:req/:id", requests.GetReq)
 
     //-------------
-    //reqId - id of request in firestore
-	//get request from firestore by id
-	//make Client to do request that we have got from firestore
-    router.GET("/requests/:reqId", requests.GetReq)
-	//get all id of requests
-	router.GET("/requests", requests.GetAllReq)
+	// get request from firestore by id
+	// make Client to do request that we have got from firestore
+    router.GET("/requests/:reqId", requests.GetReqWithId)
+	// get all id of requests
+	router.GET("/requests", requests.GetAllIdReq)
 	// add request to firestore with id
-	router.POST("/requests/:reqId", requests.PostReq)
+	router.POST("/requests/:reqId", requests.PostReqWithId)
+    // add request to firestore with random id
+	router.POST("/requests", requests.PostReq)
+	// get user's requests with userId
+	router.GET("/user_requests/:userId", requests.GetUserReqs)
 
 	log.Fatal(http.ListenAndServe(":8082", router))
 }
