@@ -8,6 +8,83 @@ import (
 	"io/ioutil"
 	"net/http"
 )
+
+func DoUserReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	if r.Method != "POST" {
+		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
+		return
+	}
+
+	//dump from real request to custom MyRequest
+	req, err := ReqToMyReq(r)
+	if err != nil {
+		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
+		return
+	}
+	fmt.Println("from ReqToMyReq: ",req)
+
+	// add to firestore
+	/*err =  AddMyReq(req)
+	if err != nil {
+		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
+		return
+	}
+	fmt.Println("from AddMyReq: ",req)*/
+
+	//todo Goroutines
+	go GoAddMyReq(req)
+
+	fmt.Println(req)
+	fmt.Println(req.UserId)
+	fmt.Println(req.Method)
+	fmt.Println(req.Host)
+	fmt.Println(req.Url)
+	fmt.Println(req.Headers) //nil
+	fmt.Println(req.Params)  //nil
+	fmt.Println(req.Body)    //nil  todo check for nill
+
+	// make Client to do request
+	url := "http://" + req.Host + req.Url
+	fmt.Println("Url to do request: ", url)
+
+	// ok
+	if req.Method == "POST" {
+
+		if req.Body == nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+
+		//body - bytes of json
+		client("POST", url, req.Headers, req.Body, req.Params)
+	}
+	// ok
+	if req.Method == "GET" {
+
+		body := client("GET", url, req.Headers, req.Body, req.Params)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	}
+	// ok
+	if req.Method == "PUT" {
+
+		if req.Body == nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		b := client("PUT", url, req.Headers, req.Body, req.Params)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
+	}
+	// ok
+	if req.Method == "DELETE" {
+		client("DELETE", url, req.Headers, req.Body, req.Params)
+	}
+}
+
 func GetUserReqs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
@@ -146,7 +223,7 @@ func GetReqWithId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 
 	//----------
 }
-
+// todo return error
 func client(
 	method string,
 	url string,
@@ -155,7 +232,6 @@ func client(
 	myParams map[string]interface{}) []byte {
 
 	fmt.Println("URL:>", url)
-	//fmt.Println(bytes.NewBuffer(json))
 
 	//---- body ----
 	var b []byte
@@ -173,9 +249,6 @@ func client(
 		   req.Header.Set(key, value.(string))
 	   }
    }
-
-	//req.Header.Set("X-Custom-Header", "myclient")
-	//req.Header.Set("Content-Type", "application/json")
 
 	//---- params ----
 	if myParams != nil {

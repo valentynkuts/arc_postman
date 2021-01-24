@@ -19,7 +19,6 @@ type Req struct {
 }
 
 type MyRequest struct {
-	//ID     string
 	UserId  string                 `firestore:"userId,omitempty"`
 	Method  string                 `firestore:"method,omitempty"`
 	Host    string                 `firestore:"host,omitempty"`
@@ -104,7 +103,44 @@ func dumpMap(space string, m map[string]interface{}) {
 		}
 	}
 }
+//Dump from real request to custom MyRequest
+func ReqToMyReq(r *http.Request) (MyRequest, error) {
+	jsonMap := make(map[string]interface{})
+	err := json.NewDecoder(r.Body).Decode(&jsonMap)
+	if err != nil {
+		panic(err)
+	}
+	dumpMap("", jsonMap)
 
+	fmt.Println("jsonMap - ", jsonMap)
+	fmt.Println("------------------------------------ ")
+
+	//fmt.Println("res -  ", res)
+	fmt.Println("UserId -  ", jsonMap["UserId"])
+	fmt.Println("Method -  ", jsonMap["Method"])
+	fmt.Println("Host -  ", jsonMap["Host"])
+	fmt.Println("Url -  ", jsonMap["Url"])
+	fmt.Println("Headers -  ", jsonMap["Headers"])
+	fmt.Println("Params -  ", jsonMap["Params"])
+	fmt.Println("Body -  ", jsonMap["Body"])
+
+	req := MyRequest{
+		UserId:  jsonMap["UserId"].(string),
+		Method:  jsonMap["Method"].(string),
+		Host:    jsonMap["Host"].(string),
+		Url:     jsonMap["Url"].(string),
+		Headers: jsonMap["Headers"].(map[string]interface{}),
+		Params:  jsonMap["Params"].(map[string]interface{}),
+		Body:    jsonMap["Body"].(map[string]interface{}),
+	}
+
+	if req.UserId == "" || req.Method == "" || req.Host == "" || req.Url == "" || req.Headers == nil {
+		return req, errors.New("400. Bad Request.")
+	}
+
+	return req, nil
+
+}
 //Add request to firestore with id
 func AddRequestWithId(r *http.Request, reqID string) (MyRequest, error) {
 	//req1 := Req1{}
@@ -171,7 +207,66 @@ func AddRequestWithId(r *http.Request, reqID string) (MyRequest, error) {
 	return req, nil
 }
 
-//Add request to firestore with id
+//Add custom request (MyRequest)to firestore with random id
+func AddMyReq(mr MyRequest)  error {
+
+	if mr.UserId == "" || mr.Method == "" || mr.Host == "" || mr.Url == "" || mr.Headers == nil {
+		return errors.New("400. Bad Request.")
+	}
+
+	ctx := context.Background()
+
+	_, _, err := config.Client.Collection("requests").Add(ctx,
+		map[string]interface{}{
+			"userId":   mr.UserId ,
+			"method":   mr.Method ,
+			"host":   mr.Host ,
+			"url":   mr.Url ,
+			"headers":   mr.Headers ,
+			"params":   mr.Params ,
+			"body":   mr.Body ,
+
+		})
+
+	if err != nil {
+		log.Fatalf("Failed to add a new Request: %w", err)
+		//fmt.Errorf("Failed to iterate the list of requests: %w", err)
+	}
+
+	return  err
+
+}
+
+//Add custom request (MyRequest)to firestore with random id using Goroutines
+func GoAddMyReq(mr MyRequest) {
+
+	if mr.UserId == "" || mr.Method == "" || mr.Host == "" || mr.Url == "" || mr.Headers == nil {
+		//return errors.New("400. Bad Request.")
+		log.Fatalf("400. Bad Request")
+	}
+
+	ctx := context.Background()
+
+	_, _, err := config.Client.Collection("requests").Add(ctx,
+		map[string]interface{}{
+			"userId":   mr.UserId ,
+			"method":   mr.Method ,
+			"host":   mr.Host ,
+			"url":   mr.Url ,
+			"headers":   mr.Headers ,
+			"params":   mr.Params ,
+			"body":   mr.Body ,
+
+		})
+
+	if err != nil {
+		log.Fatalf("Failed to add a new Request: %w", err)
+	}
+
+}
+
+
+//Add request to firestore with random id
 func AddRequest(r *http.Request) (MyRequest, error) {
 
 	jsonMap := make(map[string]interface{})

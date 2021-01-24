@@ -24,9 +24,11 @@ func main() {
 	// add request to firestore with id
 	router.POST("/requests/:reqId", requests.PostReqWithId)
     // add request to firestore with random id
-	router.POST("/requests", requests.PostReq)
+	router.POST("/requests_add", requests.PostReq)  // todo  requests_add
 	// get user's requests with userId
 	router.GET("/user_requests/:userId", requests.GetUserReqs)
+	//
+	router.POST("/requests", requests.DoUserReq)
 
 	log.Fatal(http.ListenAndServe(":8082", router))
 }
