@@ -22,31 +22,20 @@ func DoUserReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
 		return
 	}
-	fmt.Println("from ReqToMyReq: ",req)
 
 	// add to firestore
-	/*err =  AddMyReq(req)
+	err =  AddMyReq(req)
 	if err != nil {
 		http.Error(w, http.StatusText(406), http.StatusNotAcceptable)
 		return
 	}
-	fmt.Println("from AddMyReq: ",req)*/
+	fmt.Println("from AddMyReq: ",req)
 
 	//todo Goroutines
-	go GoAddMyReq(req)
-
-	fmt.Println(req)
-	fmt.Println(req.UserId)
-	fmt.Println(req.Method)
-	fmt.Println(req.Host)
-	fmt.Println(req.Url)
-	fmt.Println(req.Headers) //nil
-	fmt.Println(req.Params)  //nil
-	fmt.Println(req.Body)    //nil  todo check for nill
+	//go GoAddMyReq(req)
 
 	// make Client to do request
 	url := "http://" + req.Host + req.Url
-	fmt.Println("Url to do request: ", url)
 
 	// ok
 	if req.Method == "POST" {
@@ -54,7 +43,6 @@ func DoUserReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if req.Body == nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-
 
 		//body - bytes of json
 		client("POST", url, req.Headers, req.Body, req.Params)
@@ -161,31 +149,14 @@ func GetReqWithId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 		return
 	}
 
-	fmt.Println(req)
-	fmt.Println(req.UserId)
-	fmt.Println(req.Method)
-	fmt.Println(req.Host)
-	fmt.Println(req.Url)
-	fmt.Println(req.Headers) //nil
-	fmt.Println(req.Params)  //nil
-	fmt.Println(req.Body)    //nil  todo check for nill
-
 	url := "http://" + req.Host + req.Url
-	fmt.Println(url)
 
     // ok
 	if req.Method == "POST" {
 
-		//body, err := ioutil.ReadAll(r.Body)
-
-		//if err != nil {
-		//	http.Error(w, err.Error(), http.StatusBadRequest)
-		//}
-
 		if req.Body == nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-
 
 		//body - bytes of json
 		client("POST", url, req.Headers, req.Body, req.Params)
@@ -200,12 +171,6 @@ func GetReqWithId(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	}
    // ok
 	if req.Method == "PUT" {
-
-		//body, err := ioutil.ReadAll(r.Body)
-
-		//if err != nil {
-		//	http.Error(w, err.Error(), http.StatusBadRequest)
-		//}
 
 		if req.Body == nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -274,6 +239,16 @@ func client(
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
 
+    // -- the entire response including the headers ---
+    // if without body , second param → false
+	//clientBytes, err := httputil.DumpResponse(resp, false)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
+	//
+	//fmt.Println(string(clientBytes))
+   //--------------------------------------------------
+	//return clientBytes
 	return body
 }
 // get all id of requests
@@ -293,95 +268,4 @@ func GetAllIdReq(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonIDs)
 
-
-}
-//-----------------
-func GetReq1(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if r.Method != "GET" {
-		http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
-		return
-	}
-	paramReq := ps.ByName("req")
-	fmt.Println("param - ", paramReq)
-
-	paramId := ps.ByName("id")
-	fmt.Println("param - ", paramId)
-
-	//get host,url,method from firestore
-	req, err := OneRequest(paramReq)
-	if err != nil {
-		http.Error(w, http.StatusText(500)+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	//fmt.Println(req)
-	//fmt.Println(req.Method)
-	//fmt.Println(req.Host)
-	//fmt.Println(req.Url)
-
-	bookID := "/" + paramId
-	url := "http://" + req.Host + req.Url + bookID
-	fmt.Println(url)
-
-	if req.Method == "POST" {
-
-		body, err := ioutil.ReadAll(r.Body)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		//body - bytes of json
-		client1("POST", url, body)
-	}
-
-	if req.Method == "GET" {
-
-		body := client1("GET", url, nil)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
-	}
-
-	if req.Method == "PUT" {
-
-		body, err := ioutil.ReadAll(r.Body)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		b := client1("PUT", url, body)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
-	}
-
-	if req.Method == "DELETE" {
-		client1("DELETE", url, nil)
-	}
-
-}
-
-func client1(method string, url string, json []byte) []byte {
-	fmt.Println("URL:>", url)
-	fmt.Println(bytes.NewBuffer(json))
-
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(json))
-	req.Header.Set("X-Custom-Header", "myclient")
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
-
-	return body
 }

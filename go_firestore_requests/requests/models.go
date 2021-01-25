@@ -11,13 +11,6 @@ import (
 	"postman/go_firestore_requests/config"
 )
 
-type Req struct {
-	//ID     string
-	Method string
-	Host   string
-	Url    string
-}
-
 type MyRequest struct {
 	UserId  string                 `firestore:"userId,omitempty"`
 	Method  string                 `firestore:"method,omitempty"`
@@ -28,27 +21,6 @@ type MyRequest struct {
 	Body    map[string]interface{} `firestore:"body,omitempty"` // json
 }
 
-func OneRequest(str string) (Req, error) {
-	req := Req{}
-	ID := str
-	fmt.Println("str - ", ID)
-	if ID == "" {
-		return req, errors.New("400. Bad Request.")
-	}
-
-	ctx := context.Background()
-	doc, _ := config.Client.Collection("requests").Doc(ID).Get(ctx)
-
-	fmt.Println("OneRequest --", doc.Data())
-
-	req = Req{
-		Method: doc.Data()["method"].(string),
-		Host:   doc.Data()["host"].(string),
-		Url:    doc.Data()["url"].(string),
-	}
-
-	return req, nil
-}
 
 func GetRequestWithId(str string) (MyRequest, error) {
 	req := MyRequest{}
@@ -68,23 +40,17 @@ func GetRequestWithId(str string) (MyRequest, error) {
 		Method: doc.Data()["method"].(string),
 		Host:   doc.Data()["host"].(string),
 		Url:    doc.Data()["url"].(string),
-		//Headers :  doc.Data()["headers"].(map[string]interface{}),
-		//Params: doc.Data()["params"].(map[string]interface{}),
-		//Body :doc.Data() ["body"].(map[string]interface{}),
 	}
 
 	if val, ok := doc.Data()["headers"]; ok {
-		//req.Headers = doc.Data()["headers"].(map[string]interface{})
 		req.Headers = val.(map[string]interface{})
 	}
 
 	if val, ok := doc.Data()["params"]; ok {
-		//req.Headers = doc.Data()["headers"].(map[string]interface{})
 		req.Params = val.(map[string]interface{})
 	}
 
 	if val, ok := doc.Data()["body"]; ok {
-		//req.Headers = doc.Data()["headers"].(map[string]interface{})
 		req.Body = val.(map[string]interface{})
 	}
 
@@ -92,7 +58,7 @@ func GetRequestWithId(str string) (MyRequest, error) {
 }
 
 // json to map[string]interface{}
-func dumpMap(space string, m map[string]interface{}) {
+func dumpMap1(space string, m map[string]interface{}) {
 	for k, v := range m {
 		if mv, ok := v.(map[string]interface{}); ok {
 			fmt.Printf("{ \"%v\": \n", k)
@@ -100,6 +66,14 @@ func dumpMap(space string, m map[string]interface{}) {
 			fmt.Printf("}\n")
 		} else {
 			fmt.Printf("%v %v : %v\n", space, k, v)
+		}
+	}
+}
+//ok   json to map[string]interface{}
+func dumpMap(space string, m map[string]interface{}) {
+	for _, v := range m {
+		if mv, ok := v.(map[string]interface{}); ok {
+			dumpMap(space+"\t", mv)
 		}
 	}
 }
@@ -111,18 +85,6 @@ func ReqToMyReq(r *http.Request) (MyRequest, error) {
 		panic(err)
 	}
 	dumpMap("", jsonMap)
-
-	fmt.Println("jsonMap - ", jsonMap)
-	fmt.Println("------------------------------------ ")
-
-	//fmt.Println("res -  ", res)
-	fmt.Println("UserId -  ", jsonMap["UserId"])
-	fmt.Println("Method -  ", jsonMap["Method"])
-	fmt.Println("Host -  ", jsonMap["Host"])
-	fmt.Println("Url -  ", jsonMap["Url"])
-	fmt.Println("Headers -  ", jsonMap["Headers"])
-	fmt.Println("Params -  ", jsonMap["Params"])
-	fmt.Println("Body -  ", jsonMap["Body"])
 
 	req := MyRequest{
 		UserId:  jsonMap["UserId"].(string),
@@ -143,68 +105,17 @@ func ReqToMyReq(r *http.Request) (MyRequest, error) {
 }
 //Add request to firestore with id
 func AddRequestWithId(r *http.Request, reqID string) (MyRequest, error) {
-	//req1 := Req1{}
-	//ID:= str
-	//fmt.Println("str - ",ID)
-	jsonMap := make(map[string]interface{})
-	//err := json.Unmarshal([]byte(jsonStr), &jsonMap)
-	err := json.NewDecoder(r.Body).Decode(&jsonMap)
+
+	//dump from real request to custom MyRequest
+	req, err := ReqToMyReq(r)
 	if err != nil {
-		panic(err)
-	}
-	dumpMap("", jsonMap)
-
-	fmt.Println("jsonMap - ", jsonMap)
-	fmt.Println("------------------------------------ ")
-	//var res map[string]interface{}
-
-	//res = jsonMap
-
-	//fmt.Println("res -  ", res)
-	fmt.Println("UserId -  ", jsonMap["UserId"])
-	fmt.Println("Method -  ", jsonMap["Method"])
-	fmt.Println("Host -  ", jsonMap["Host"])
-	fmt.Println("Url -  ", jsonMap["Url"])
-	fmt.Println("Headers -  ", jsonMap["Headers"])
-	fmt.Println("Params -  ", jsonMap["Params"])
-	fmt.Println("Body -  ", jsonMap["Body"])
-
-	//if bk.Isbn == "" || bk.Title == "" || bk.Author == "" || bk.Price == "" {
-	//	return req1, errors.New("400. Bad Request.")
-	//}
-
-	req := MyRequest{
-		UserId:  jsonMap["UserId"].(string),
-		Method:  jsonMap["Method"].(string),
-		Host:    jsonMap["Host"].(string),
-		Url:     jsonMap["Url"].(string),
-		Headers: jsonMap["Headers"].(map[string]interface{}),
-		Params:  jsonMap["Params"].(map[string]interface{}),
-		Body:    jsonMap["Body"].(map[string]interface{}),
-	}
-
-	if req.UserId == "" || req.Method == "" || req.Host == "" || req.Url == "" || req.Headers == nil {
-		return req, errors.New("400. Bad Request.")
+		return req, err
 	}
 
 	ctx := context.Background()
 	_, err = config.Client.Collection("requests").Doc(reqID).Set(ctx, req)
 
-	//_, _, err = config.Client.Collection("books").Add(context.Background(),  //TODO
-	//	map[string]interface{}{
-	//		"Isbn":   bk.Isbn,
-	//		"Title":  bk.Title,
-	//		"Author": bk.Author,
-	//		"Price":  bk.Price,
-	//	})
-	//
-	//if err != nil {
-	//	log.Fatalf("Failed to add a new book: %w", err)
-	//	//fmt.Errorf("Failed to iterate the list of requests: %w", err)
-	//
-	//}
-
-	return req, nil
+	return req, err
 }
 
 //Add custom request (MyRequest)to firestore with random id
@@ -230,7 +141,6 @@ func AddMyReq(mr MyRequest)  error {
 
 	if err != nil {
 		log.Fatalf("Failed to add a new Request: %w", err)
-		//fmt.Errorf("Failed to iterate the list of requests: %w", err)
 	}
 
 	return  err
@@ -269,42 +179,12 @@ func GoAddMyReq(mr MyRequest) {
 //Add request to firestore with random id
 func AddRequest(r *http.Request) (MyRequest, error) {
 
-	jsonMap := make(map[string]interface{})
-	//err := json.Unmarshal([]byte(jsonStr), &jsonMap)
-	err := json.NewDecoder(r.Body).Decode(&jsonMap)
+	req, err := ReqToMyReq(r)
 	if err != nil {
-		panic(err)
-	}
-	dumpMap("", jsonMap)
-
-	fmt.Println("jsonMap - ", jsonMap)
-
-	fmt.Println("UserId -  ", jsonMap["UserId"])
-	fmt.Println("Method -  ", jsonMap["Method"])
-	fmt.Println("Host -  ", jsonMap["Host"])
-	fmt.Println("Url -  ", jsonMap["Url"])
-	fmt.Println("Headers -  ", jsonMap["Headers"])
-	fmt.Println("Params -  ", jsonMap["Params"])
-	fmt.Println("Body -  ", jsonMap["Body"])
-
-
-	req := MyRequest{
-		UserId:  jsonMap["UserId"].(string),
-		Method:  jsonMap["Method"].(string),
-		Host:    jsonMap["Host"].(string),
-		Url:     jsonMap["Url"].(string),
-		Headers: jsonMap["Headers"].(map[string]interface{}),
-		Params:  jsonMap["Params"].(map[string]interface{}),
-		Body:    jsonMap["Body"].(map[string]interface{}),
-	}
-
-	if req.UserId == "" || req.Method == "" || req.Host == "" || req.Url == "" || req.Headers == nil {
-		return req, errors.New("400. Bad Request.")
+		return req, err
 	}
 
 	ctx := context.Background()
-	//_, err = config.Client.Collection("requests").Doc(reqID).Set(ctx, req)
-
 	_, _, err = config.Client.Collection("requests").Add(ctx,
 		map[string]interface{}{
 			"userId":   req.UserId ,
@@ -319,11 +199,9 @@ func AddRequest(r *http.Request) (MyRequest, error) {
 
 	if err != nil {
 		log.Fatalf("Failed to add a new Request: %w", err)
-		//fmt.Errorf("Failed to iterate the list of requests: %w", err)
-
 	}
 
-	return req, nil
+	return req, err
 }
 
 
@@ -348,13 +226,11 @@ func AllIdRequest() ([]string, error) {
 
 func GetUserRequests(userId string) ([]MyRequest, error) {
 	var reqs []MyRequest
-	//ID := userId
 	fmt.Println("userId - ", userId)
 	if userId == "" {
 		return reqs, errors.New("400. Bad Request.")
 	}
 
-	//-------------
 	ctx := context.Background()
 	q := config.Client.Collection("requests").Where("userId", "==", userId)
 	iter := q.Documents(ctx)
@@ -376,23 +252,17 @@ func GetUserRequests(userId string) ([]MyRequest, error) {
 			Method:  doc.Data()["method"].(string),
 			Host:    doc.Data()["host"].(string),
 			Url:     doc.Data()["url"].(string),
-			//Headers: doc.Data()["headers"].(map[string]interface{}),
-			//Params:  doc.Data()["params"].(map[string]interface{}),
-			//Body:    doc.Data()["body"].(map[string]interface{}),
 		}
 
 		if val, ok := doc.Data()["headers"]; ok {
-			//req.Headers = doc.Data()["headers"].(map[string]interface{})
 			req.Headers = val.(map[string]interface{})
 		}
 
 		if val, ok := doc.Data()["params"]; ok {
-			//req.Headers = doc.Data()["headers"].(map[string]interface{})
 			req.Params = val.(map[string]interface{})
 		}
 
 		if val, ok := doc.Data()["body"]; ok {
-			//req.Headers = doc.Data()["headers"].(map[string]interface{})
 			req.Body = val.(map[string]interface{})
 		}
 
