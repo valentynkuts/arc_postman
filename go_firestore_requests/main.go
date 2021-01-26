@@ -5,6 +5,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
+	"os"
 	"postman/go_firestore_requests/requests"
 )
 
@@ -35,7 +36,18 @@ func main() {
 	//sending the results(response) of the request back.
 	router.POST("/requests", requests.DoUserReq)
 
-	log.Fatal(http.ListenAndServe(":8082", router))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("Defaulting to port %s", port)
+	}
+
+	log.Printf("Listening on port %s", port)
+	if err := http.ListenAndServe(":"+port, router); err != nil {
+		log.Fatal(err)
+	}
+
+	//log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {

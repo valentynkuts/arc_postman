@@ -3,8 +3,6 @@ package config
 import (
 	"cloud.google.com/go/firestore"
 	"context"
-	//"google.golang.org/api/option"
-	//"google.golang.org/api/firebase/v1beta1"
 	"log"
 )
 
@@ -21,7 +19,6 @@ func init() {
 	Client, err = firestore.NewClient(Ctx, projectID)
 	if err != nil {
 		log.Fatalf("Firestore: %v", err)
-		//panic(err)
 	}
 
 }
